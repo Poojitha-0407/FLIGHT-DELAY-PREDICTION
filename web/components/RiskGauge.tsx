@@ -3,26 +3,23 @@
 import { useEffect, useRef, useState } from "react";
 import type { Prediction } from "@/lib/types";
 
-/* Risk as an attitude indicator. Not just a skin: the horizon rides on the
- * route's own historical rate, so the gap between it and the aircraft symbol
- * is what the model is actually contributing. */
+/* The one part of this UI that isn't borrowed from somewhere else. A PFD
+ * answers the same question the model does -- how far from level are we -- and
+ * the horizon rides on the route's own historical rate, so the gap between it
+ * and the aircraft symbol is what the model is actually contributing. */
 
-const SIZE = 210;
-const R = 86;
+const S = 84;
+const R = 36;
 
-function bandColor(band: Prediction["risk_band"]): string {
-  return {
-    low: "var(--risk-low)",
-    moderate: "var(--risk-mod)",
-    elevated: "var(--risk-high)",
-    high: "var(--risk-severe)",
-  }[band];
-}
+const BAND: Record<Prediction["risk_band"], string> = {
+  low: "var(--green)",
+  moderate: "var(--amber)",
+  elevated: "var(--orange)",
+  high: "var(--red)",
+};
 
-/** Probability -> pitch. Level at the base rate, full deflection around 50%. */
-function toPitch(p: number): number {
-  return Math.max(-42, Math.min(42, (p - 0.16) * 200));
-}
+/** Probability -> pitch. Level near the base rate, full deflection around 50%. */
+const pitchOf = (p: number) => Math.max(-38, Math.min(38, (p - 0.16) * 190));
 
 export default function RiskGauge({ result }: { result: Prediction | null }) {
   const [shown, setShown] = useState(0);
@@ -32,11 +29,10 @@ export default function RiskGauge({ result }: { result: Prediction | null }) {
   useEffect(() => {
     const target = result?.probability ?? 0;
     const from = shown;
-    const start = performance.now();
+    const t0 = performance.now();
     const step = (now: number) => {
-      const t = Math.min((now - start) / 620, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setShown(from + (target - from) * eased);
+      const t = Math.min((now - t0) / 550, 1);
+      setShown(from + (target - from) * (1 - Math.pow(1 - t, 3)));
       if (t < 1) raf.current = requestAnimationFrame(step);
     };
     raf.current = requestAnimationFrame(step);
@@ -45,70 +41,48 @@ export default function RiskGauge({ result }: { result: Prediction | null }) {
   }, [result?.probability]);
 
   // parked reads as level, not pinned to the bottom of the range
-  const pitch = result ? toPitch(shown) : 0;
-  const baseline = result?.baseline_route_rate ?? null;
-  const basePitch = baseline == null ? null : toPitch(baseline);
-  const color = result ? bandColor(result.risk_band) : "var(--text-faint)";
+  const pitch = result ? pitchOf(shown) : 0;
+  const base = result?.baseline_route_rate;
+  const basePitch = base == null ? null : pitchOf(base);
+  const color = result ? BAND[result.risk_band] : "var(--fg-3)";
+  const k = 0.82; // px per degree
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} role="img"
-           aria-label={result ? `Delay risk ${(shown * 100).toFixed(1)} percent` : "Awaiting input"}>
-        <defs>
-          <clipPath id="ball"><circle cx={SIZE / 2} cy={SIZE / 2} r={R} /></clipPath>
-        </defs>
+    <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{ flex: "none" }}
+         role="img"
+         aria-label={result ? `Delay risk ${(shown * 100).toFixed(1)}%` : "No estimate yet"}>
+      <defs>
+        <clipPath id="rg-ball"><circle cx={S / 2} cy={S / 2} r={R} /></clipPath>
+      </defs>
 
-        {/* the moving ball */}
-        <g clipPath="url(#ball)">
-          <g transform={`translate(0 ${pitch * 1.9})`}>
-            <rect x="0" y={-SIZE} width={SIZE} height={SIZE * 1.5 + SIZE / 2} fill="#0a2138" />
-            <rect x="0" y={SIZE / 2} width={SIZE} height={SIZE * 1.5} fill="#241605" />
-            <line x1="0" y1={SIZE / 2} x2={SIZE} y2={SIZE / 2}
-                  stroke="var(--text)" strokeWidth="1.5" opacity="0.85" />
-            {/* ladder, every 10 points of probability */}
-            {[-30, -20, -10, 10, 20, 30].map((d) => (
-              <g key={d} opacity="0.5">
-                <line x1={SIZE / 2 - (d % 20 === 0 ? 26 : 15)} y1={SIZE / 2 + d * 1.9}
-                      x2={SIZE / 2 + (d % 20 === 0 ? 26 : 15)} y2={SIZE / 2 + d * 1.9}
-                      stroke="var(--text-dim)" strokeWidth="1" />
-              </g>
-            ))}
-          </g>
-
-          {/* where this route normally sits */}
-          {basePitch != null && (
-            <line x1="18" y1={SIZE / 2 + basePitch * 1.9} x2={SIZE - 18}
-                  y2={SIZE / 2 + basePitch * 1.9}
-                  stroke="var(--cyan)" strokeWidth="1" strokeDasharray="3 4" opacity="0.8" />
-          )}
+      <g clipPath="url(#rg-ball)">
+        <g transform={`translate(0 ${pitch * k})`}>
+          <rect x="0" y={-S} width={S} height={S * 1.5} fill="#16202e" />
+          <rect x="0" y={S / 2} width={S} height={S * 1.5} fill="#2a1e0d" />
+          <line x1="0" y1={S / 2} x2={S} y2={S / 2} stroke="var(--fg)" strokeWidth="1" opacity="0.7" />
+          {/* ladder, every 10 points of probability */}
+          {[-20, -10, 10, 20].map((d) => (
+            <line key={d} x1={S / 2 - 9} y1={S / 2 + d * k} x2={S / 2 + 9} y2={S / 2 + d * k}
+                  stroke="var(--fg-2)" strokeWidth="0.8" opacity="0.45" />
+          ))}
         </g>
+        {/* where this route normally sits */}
+        {basePitch != null && (
+          <line x1="8" y1={S / 2 + basePitch * k} x2={S - 8} y2={S / 2 + basePitch * k}
+                stroke="var(--cyan)" strokeWidth="0.9" strokeDasharray="2 3" opacity="0.85" />
+        )}
+      </g>
 
-        <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none"
-                stroke="var(--bezel-lit)" strokeWidth="2" />
-        <circle cx={SIZE / 2} cy={SIZE / 2} r={R + 5} fill="none"
-                stroke="var(--bezel)" strokeWidth="6" />
+      <circle cx={S / 2} cy={S / 2} r={R} fill="none" stroke="var(--line-hi)" strokeWidth="1" />
 
-        {/* fixed aircraft symbol */}
-        <g stroke={color} strokeWidth="3" fill="none" strokeLinecap="round">
-          <line x1={SIZE / 2 - 38} y1={SIZE / 2} x2={SIZE / 2 - 13} y2={SIZE / 2} />
-          <line x1={SIZE / 2 + 13} y1={SIZE / 2} x2={SIZE / 2 + 38} y2={SIZE / 2} />
-          <line x1={SIZE / 2 - 13} y1={SIZE / 2} x2={SIZE / 2 - 13} y2={SIZE / 2 + 7} />
-          <line x1={SIZE / 2 + 13} y1={SIZE / 2} x2={SIZE / 2 + 13} y2={SIZE / 2 + 7} />
-        </g>
-        <circle cx={SIZE / 2} cy={SIZE / 2} r="2.4" fill={color} />
-      </svg>
-
-      <div style={{ marginTop: 14, textAlign: "center" }}>
-        <div style={{
-          fontFamily: "var(--mono)", fontSize: 38, fontVariantNumeric: "tabular-nums",
-          color, textShadow: `0 0 20px ${result ? color : "transparent"}`, lineHeight: 1,
-        }}>
-          {result ? `${(shown * 100).toFixed(1)}%` : "\u2013"}
-        </div>
-        <div className="label" style={{ marginTop: 8, color: result ? color : undefined }}>
-          {result ? `${result.risk_band} risk` : "awaiting input"}
-        </div>
-      </div>
-    </div>
+      {/* fixed aircraft symbol */}
+      <g stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round">
+        <line x1={S / 2 - 16} y1={S / 2} x2={S / 2 - 6} y2={S / 2} />
+        <line x1={S / 2 + 6} y1={S / 2} x2={S / 2 + 16} y2={S / 2} />
+        <line x1={S / 2 - 6} y1={S / 2} x2={S / 2 - 6} y2={S / 2 + 3.5} />
+        <line x1={S / 2 + 6} y1={S / 2} x2={S / 2 + 6} y2={S / 2 + 3.5} />
+      </g>
+      <circle cx={S / 2} cy={S / 2} r="1.3" fill={color} />
+    </svg>
   );
 }

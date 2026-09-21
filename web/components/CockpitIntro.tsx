@@ -292,11 +292,11 @@ export default function CockpitIntro({ onDone }: Props) {
   return (
     <div className="intro" data-done={done} ref={mount}>
       <div className="intro-copy">
-        <div className="intro-title">FLIGHT DELAY</div>
+        <div className="intro-title">Flight Delay</div>
         <div className="intro-sub">2,496,306 FLIGHTS &middot; 30 AIRPORTS &middot; 2025</div>
       </div>
       <button className="intro-skip" onClick={() => finish.current()}>
-        SKIP &middot; ESC
+        Skip <span className="kbd">Esc</span>
       </button>
     </div>
   );

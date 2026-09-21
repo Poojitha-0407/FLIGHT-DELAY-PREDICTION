@@ -12,21 +12,21 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const AXIS = {
-  stroke: "#47566b",
+  stroke: "#62656b",
   fontSize: 10,
-  fontFamily: "var(--mono)",
+  fontFamily: "var(--font-mono-stack)",
   tickLine: false,
 } as const;
-const GRID = "#1c2840";
-const CYAN = "#4dd0ff";
-const AMBER = "#ffb000";
-const DEEP = "#1d3a52";
+const GRID = "rgba(255,255,255,0.07)";
+const CYAN = "#62c9ff";
+const AMBER = "#ffb224";
+const DEEP = "#2b3a4d";
 
 const tooltipStyle = {
-  background: "rgba(2,4,10,0.96)",
-  border: "1px solid #2a3a5c",
-  borderRadius: 3,
-  fontFamily: "var(--mono)",
+  background: "rgba(10,11,13,0.97)",
+  border: "1px solid rgba(255,255,255,0.14)",
+  borderRadius: 10,
+  fontFamily: "var(--font-mono-stack)",
   fontSize: 11,
 } as const;
 
@@ -63,10 +63,10 @@ export default function Dashboard({ summary, routes, selected }: Props) {
   const busiest = [...summary.airports].slice(0, 15);
 
   return (
-    <div className="charts">
+    <div style={{ display: "contents" }}>
       <Metrics summary={summary} />
 
-      <div className="instrument">
+      <div className="tile">
         <h2>Seasonality</h2>
         <p className="note">
           Seasonality across {summary.meta.year}: summer thunderstorms and the
@@ -83,7 +83,7 @@ export default function Dashboard({ summary, routes, selected }: Props) {
         </ResponsiveContainer>
       </div>
 
-      <div className="instrument">
+      <div className="tile">
         <h2>{focus} &middot; hourly bank structure</h2>
         <p className="note">
           Departures and their delay rate through the operating day. Delay
@@ -96,7 +96,7 @@ export default function Dashboard({ summary, routes, selected }: Props) {
             <YAxis yAxisId="left" {...AXIS} />
             <YAxis yAxisId="right" orientation="right" tickFormatter={pct} {...AXIS} />
             <Tooltip contentStyle={tooltipStyle} />
-            <Legend wrapperStyle={{ fontSize: 10, fontFamily: "var(--mono)" }} />
+            <Legend wrapperStyle={{ fontSize: 10, fontFamily: "var(--font-mono-stack)" }} />
             <Bar yAxisId="left" dataKey="flights" name="departures" fill={DEEP} />
             <Line yAxisId="right" type="monotone" dataKey="delay_rate" name="delay rate"
                   stroke={AMBER} strokeWidth={2} dot={false} />
@@ -104,7 +104,7 @@ export default function Dashboard({ summary, routes, selected }: Props) {
         </ResponsiveContainer>
       </div>
 
-      <div className="instrument">
+      <div className="tile">
         <h2>Corridor reliability spread</h2>
         <p className="note">
           The eight least and eight most reliable corridors carrying at least
@@ -126,7 +126,7 @@ export default function Dashboard({ summary, routes, selected }: Props) {
         </ResponsiveContainer>
       </div>
 
-      <div className="instrument">
+      <div className="tile">
         <h2>Carrier performance</h2>
         <ResponsiveContainer width="100%" height={260}>
           <BarChart data={summary.carriers} margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
@@ -143,7 +143,7 @@ export default function Dashboard({ summary, routes, selected }: Props) {
         </ResponsiveContainer>
       </div>
 
-      <div className="instrument">
+      <div className="tile">
         <h2>Traffic and reliability</h2>
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart data={busiest} margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
@@ -152,7 +152,7 @@ export default function Dashboard({ summary, routes, selected }: Props) {
             <YAxis yAxisId="left" {...AXIS} />
             <YAxis yAxisId="right" orientation="right" tickFormatter={pct} {...AXIS} />
             <Tooltip contentStyle={tooltipStyle} />
-            <Legend wrapperStyle={{ fontSize: 10, fontFamily: "var(--mono)" }} />
+            <Legend wrapperStyle={{ fontSize: 10, fontFamily: "var(--font-mono-stack)" }} />
             <Bar yAxisId="left" dataKey="departures" name="departures" fill={DEEP} />
             <Line yAxisId="right" type="monotone" dataKey="dep_delay_rate" name="delay rate"
                   stroke={AMBER} strokeWidth={2} dot={false} />
@@ -166,7 +166,7 @@ export default function Dashboard({ summary, routes, selected }: Props) {
 function Metrics({ summary }: { summary: DashboardSummary }) {
   const m = summary.model_metrics;
   return (
-    <div className="instrument">
+    <div className="tile">
       <h2>Model &middot; held-out test</h2>
       {m ? (
         <>
@@ -174,17 +174,17 @@ function Metrics({ summary }: { summary: DashboardSummary }) {
             {m.date_range[0]} to {m.date_range[1]} · {m.rows.toLocaleString()} flights ·
             never seen during training or early stopping.
           </p>
-          <div className="row"><span>ROC-AUC</span><span>{m.roc_auc.toFixed(3)}</span></div>
-          <div className="row">
+          <div className="kv"><span>ROC-AUC</span><span>{m.roc_auc.toFixed(3)}</span></div>
+          <div className="kv">
             <span>PR-AUC</span>
             <span>{m.pr_auc.toFixed(3)} ({m.pr_auc_lift_over_base}× base rate)</span>
           </div>
-          <div className="row"><span>Base delay rate</span><span>{pct(m.base_delay_rate)}</span></div>
-          <div className="row">
+          <div className="kv"><span>Base delay rate</span><span>{pct(m.base_delay_rate)}</span></div>
+          <div className="kv">
             <span>Brier</span>
             <span>{m.brier.toFixed(4)} vs {m.brier_baseline.toFixed(4)} baseline</span>
           </div>
-          <div className="row"><span>Log loss</span><span>{m.log_loss.toFixed(4)}</span></div>
+          <div className="kv"><span>Log loss</span><span>{m.log_loss.toFixed(4)}</span></div>
         </>
       ) : (
         <p className="note">Run <code>make evaluate</code> then <code>make export</code>.</p>

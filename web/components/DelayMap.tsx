@@ -19,6 +19,9 @@ const INITIAL_VIEW = {
   zoom: 3.15,
   pitch: 22,
   bearing: 0,
+  // The panel floats over the deck, so centre the network in what's actually
+  // visible rather than in the viewport. Same trick FR24 and Maps use.
+  padding: { left: 360, top: 60, right: 20, bottom: 70 },
 };
 const ARC_HEIGHT = 0.32;
 
@@ -152,7 +155,7 @@ export default function DelayMap({ routes, airports, selected, onSelectAirport }
   ];
 
   return (
-    <div className="mapwrap" data-basemap={MAPBOX_TOKEN ? "on" : "off"}>
+    <div className="deck" data-basemap={MAPBOX_TOKEN ? "on" : "off"}>
       <DeckGL
         initialViewState={INITIAL_VIEW}
         controller
@@ -172,27 +175,23 @@ export default function DelayMap({ routes, airports, selected, onSelectAirport }
       </DeckGL>
 
       {hover?.object && (
-        <div className="tip" style={{ left: hover.x + 14, top: hover.y + 14 }}>
+        <div className="tip" style={{ left: hover.x + 16, top: hover.y + 16 }}>
           <Tip object={hover.object} />
         </div>
       )}
 
-      <div className="legend">
-        <div style={{ letterSpacing: "0.16em", color: "var(--amber)" }}>ARRIVAL DELAY &gt; 30 MIN</div>
+      <div className="float card legend">
+        <div className="eyebrow">Arrival delay &gt; 30 min</div>
         <div className="ramp" />
         <div className="ramp-ends">
           <span>8.7%</span>
           <span>14.8%</span>
           <span>21.4%+</span>
         </div>
-        <div style={{ marginTop: 9, color: "var(--text-faint)" }}>
-          {selected ? `FILTERED ${selected} / CLICK VOID TO CLEAR` : "CLICK AIRPORT TO FILTER"}
+        <div style={{ marginTop: 8, fontSize: 11, color: "var(--fg-3)", lineHeight: 1.5 }}>
+          {selected ? `Showing ${selected}. Esc to clear.` : "Click an airport to filter."}
+          {!MAPBOX_TOKEN && " No basemap \u2014 add a Mapbox token for terrain."}
         </div>
-        {!MAPBOX_TOKEN && (
-          <div style={{ marginTop: 7, color: "var(--cyan-dim)", maxWidth: 196, whiteSpace: "normal", lineHeight: 1.5 }}>
-            NO BASEMAP &middot; ADD NEXT_PUBLIC_MAPBOX_TOKEN FOR TERRAIN
-          </div>
-        )}
       </div>
     </div>
   );
@@ -205,9 +204,7 @@ function Tip({ object }: { object: unknown }) {
     return (
       <>
         <b>{String(o.label)}</b>
-        <div style={{ color: "var(--text-dim)" }}>
-          {(Number(o.t) * 100).toFixed(0)}% ENROUTE
-        </div>
+        <div style={{ color: "var(--fg-3)" }}>{(Number(o.t) * 100).toFixed(0)}% enroute</div>
       </>
     );
   }
@@ -217,11 +214,11 @@ function Tip({ object }: { object: unknown }) {
     return (
       <>
         <b>{r.origin} &rarr; {r.dest}</b>
-        <div className="row"><span>FLIGHTS</span><span>{r.flights.toLocaleString()}</span></div>
-        <div className="row"><span>DELAYED</span><span>{(r.delay_rate * 100).toFixed(1)}%</span></div>
-        <div className="row"><span>MEAN</span><span>{r.avg_delay_min.toFixed(1)}m</span></div>
-        <div className="row"><span>P90</span><span>{r.p90_delay_min.toFixed(0)}m</span></div>
-        <div className="row"><span>CANCEL</span><span>{(r.cancel_rate * 100).toFixed(2)}%</span></div>
+        <div className="kv"><span>Flights</span><span>{r.flights.toLocaleString()}</span></div>
+        <div className="kv"><span>Delayed</span><span>{(r.delay_rate * 100).toFixed(1)}%</span></div>
+        <div className="kv"><span>Mean</span><span>{r.avg_delay_min.toFixed(1)} min</span></div>
+        <div className="kv"><span>P90</span><span>{r.p90_delay_min.toFixed(0)} min</span></div>
+        <div className="kv"><span>Cancelled</span><span>{(r.cancel_rate * 100).toFixed(2)}%</span></div>
       </>
     );
   }
@@ -230,10 +227,10 @@ function Tip({ object }: { object: unknown }) {
   return (
     <>
       <b>{a.iata}</b>
-      <div style={{ color: "var(--text-dim)", marginBottom: 4 }}>{a.city}</div>
-      <div className="row"><span>DEPARTURES</span><span>{a.departures.toLocaleString()}</span></div>
-      <div className="row"><span>DELAYED</span><span>{(a.dep_delay_rate * 100).toFixed(1)}%</span></div>
-      <div className="row"><span>PEAK/HR</span><span>{a.peak_hourly_departures}</span></div>
+      <div style={{ color: "var(--fg-3)", marginBottom: 5 }}>{a.city}</div>
+      <div className="kv"><span>Departures</span><span>{a.departures.toLocaleString()}</span></div>
+      <div className="kv"><span>Delayed</span><span>{(a.dep_delay_rate * 100).toFixed(1)}%</span></div>
+      <div className="kv"><span>Peak/hr</span><span>{a.peak_hourly_departures}</span></div>
     </>
   );
 }

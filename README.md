@@ -169,20 +169,29 @@ model's decomposition rather than a story told afterwards.
 
 ## Interface
 
-Styled as a night flight deck: near-black, instruments amber, nav green, live
-data cyan, red reserved for real high risk.
+Design lineage, since it isn't invented from scratch:
+
+- **Layout from Flightradar24.** Full-bleed map with the chrome floating on top
+  of it, tools collected in a pill at the bottom, detail panel overlaying rather
+  than occupying a column. The deck gets a left padding so the network centres
+  in the visible area instead of behind the panel, which is the same trick FR24
+  and Google Maps use.
+- **Chrome from Linear.** Inter at weight 510 with -0.022em tracking, `#08090a`,
+  13px UI text, fully rounded buttons, 1px borders at 8% white.
+- **Instruments from actual avionics.** The one part that isn't borrowed. Risk
+  renders as an attitude indicator, with the horizon riding on the route's own
+  historical rate so the gap to the aircraft symbol is the model's contribution.
+  Weather renders in METAR grammar (`EWR 09G20KT 10SM 15C FCST`).
+
+`A` toggles analysis, `Esc` closes it and clears the airport filter.
 
 The entry sequence is procedural Three.js: windscreen aperture, airglow horizon,
 city lights below, camera easing back off the glass. No model to download. Esc
 skips, once per session, bypassed under `prefers-reduced-motion`. It plays while
 the API calls are in flight.
 
-Risk renders as an attitude indicator, with the horizon riding on the route's own
-historical rate so the gap to the aircraft symbol is the model's contribution.
-Weather renders in METAR grammar (`EWR 09G20KT 10SM 15C FCST`).
-
 The colour ramp is anchored on the 5th/95th percentiles of the real route
-distribution. It used to run 0.10–0.45 while 90% of routes sit between 0.087 and
+distribution. It used to run 0.10-0.45 while 90% of routes sit between 0.087 and
 0.214, so nearly every arc came out the same yellow. That fix then made the
 "worst routes" chart all red for the same reason in reverse, so it now shows both
 ends of the distribution.

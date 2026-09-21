@@ -15,9 +15,16 @@ interface Props {
   onDestChange: (v: string) => void;
 }
 
-function defaultDeparture(): string {
-  const t = new Date(Date.now() + 24 * 3600 * 1000);
-  t.setMinutes(0, 0, 0);
+const BAND_COLOR: Record<Prediction["risk_band"], string> = {
+  low: "var(--green)",
+  moderate: "var(--amber)",
+  elevated: "var(--orange)",
+  high: "var(--red)",
+};
+
+function tomorrowAtNine(): string {
+  const t = new Date(Date.now() + 864e5);
+  t.setHours(9, 0, 0, 0);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}T${p(t.getHours())}:00`;
 }
@@ -25,8 +32,8 @@ function defaultDeparture(): string {
 export default function PredictForm({
   airports, carriers, origin, dest, onOriginChange, onDestChange,
 }: Props) {
-  const [carrier, setCarrier] = useState("AA");
-  const [departure, setDeparture] = useState(defaultDeparture);
+  const [carrier, setCarrier] = useState("UA");
+  const [departure, setDeparture] = useState(tomorrowAtNine);
   const [result, setResult] = useState<Prediction | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -49,142 +56,158 @@ export default function PredictForm({
 
   return (
     <>
-      <div className="bay">
-        <div className="bay-head">
-          <h2 className="label" style={{ color: "var(--amber)" }}>Flight plan</h2>
-        </div>
-
+      <div className="section">
+        <div className="eyebrow" style={{ marginBottom: 10 }}>Flight</div>
         <form onSubmit={submit}>
-          <div className="grid2">
+          <div className="pair">
             <div className="field">
-              <label htmlFor="origin">Origin</label>
+              <label className="eyebrow" htmlFor="origin">From</label>
               <select id="origin" value={origin} onChange={(e) => onOriginChange(e.target.value)}>
                 {airports.map((a) => (
-                  <option key={a.iata} value={a.iata}>{a.iata} &middot; {a.city}</option>
+                  <option key={a.iata} value={a.iata}>{a.iata} &nbsp;{a.city}</option>
                 ))}
               </select>
             </div>
             <div className="field">
-              <label htmlFor="dest">Destination</label>
+              <label className="eyebrow" htmlFor="dest">To</label>
               <select id="dest" value={dest} onChange={(e) => onDestChange(e.target.value)}>
                 {airports.map((a) => (
-                  <option key={a.iata} value={a.iata}>{a.iata} &middot; {a.city}</option>
+                  <option key={a.iata} value={a.iata}>{a.iata} &nbsp;{a.city}</option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div className="grid2">
+          <div className="pair">
             <div className="field">
-              <label htmlFor="carrier">Carrier</label>
+              <label className="eyebrow" htmlFor="carrier">Airline</label>
               <select id="carrier" value={carrier} onChange={(e) => setCarrier(e.target.value)}>
-                {carriers.map((c) => (
-                  <option key={c.carrier} value={c.carrier}>{c.carrier}</option>
-                ))}
+                {carriers.map((c) => <option key={c.carrier} value={c.carrier}>{c.carrier}</option>)}
               </select>
             </div>
             <div className="field">
-              <label htmlFor="dep">Departure &middot; local</label>
+              <label className="eyebrow" htmlFor="dep">Departs</label>
               <input id="dep" type="datetime-local" value={departure}
                      onChange={(e) => setDeparture(e.target.value)} />
             </div>
           </div>
 
-          <button className="execute" type="submit" data-busy={busy} disabled={busy || same}>
-            {busy ? "Computing" : same ? "Select two airports" : "Compute risk"}
+          <button className="btn" type="submit" disabled={busy || same}>
+            {busy ? "Working…" : same ? "Pick two airports" : "Estimate risk"}
           </button>
         </form>
-
-        {error && <div className="err">{error}</div>}
+        {error && <div className="err" style={{ marginTop: 9 }}>{error}</div>}
       </div>
 
-      <div className="bay">
-        <RiskGauge result={result} />
-        {!result && !error && (
-          <p style={{
-            margin: "14px 0 0", fontSize: 11, lineHeight: 1.7,
-            color: "var(--text-faint)", textAlign: "center",
-          }}>
-            Probability this flight arrives more than 30 minutes late, from the
-            schedule, the airport&apos;s own history and live weather at both ends.
-            The dashed cyan line marks this route&apos;s usual rate.
-          </p>
-        )}
+      <div className="section">
+        {result ? <Verdict result={result} /> : <Empty />}
       </div>
 
-      {result && <Readout result={result} origin={origin} dest={dest} />}
+      {result && <Conditions result={result} origin={origin} dest={dest} />}
+      {result && <Drivers result={result} />}
     </>
   );
 }
 
-function Readout({ result, origin, dest }: { result: Prediction; origin: string; dest: string }) {
+function Empty() {
+  return (
+    <div style={{ display: "flex", gap: 13, alignItems: "flex-start" }}>
+      <RiskGauge result={null} />
+      <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.6, color: "var(--fg-3)" }}>
+        Chance of arriving more than 30 minutes late, from the schedule, the
+        airport&apos;s own history and the weather at both ends.
+      </p>
+    </div>
+  );
+}
+
+function Verdict({ result }: { result: Prediction }) {
+  const color = BAND_COLOR[result.risk_band];
   const base = result.baseline_route_rate;
   const delta = base == null ? null : result.probability - base;
 
   return (
     <>
-      <div className="bay">
-        <div className="bay-head">
-          <h2 className="label" style={{ color: "var(--amber)" }}>Conditions</h2>
-          <span className="label" style={{ fontSize: 9 }}>
-            {sourceLegend(result.weather.origin as Record<string, number | string | null>)}
-          </span>
-        </div>
-        <MetarStrip result={result} origin={origin} dest={dest} />
-
-        <div style={{ marginTop: 14 }}>
-          {base != null && (
-            <div className="row">
-              <span>{origin}&ndash;{dest} historical</span>
-              <span>{(base * 100).toFixed(1)}%</span>
-            </div>
-          )}
-          {delta != null && (
-            <div className="row">
-              <span>Model delta</span>
-              <span style={{ color: delta > 0 ? "var(--red)" : "var(--green)" }}>
-                {delta > 0 ? "+" : ""}{(delta * 100).toFixed(1)} pts
-              </span>
-            </div>
-          )}
-          <div className="row">
-            <span>Arrives</span>
-            <span>{result.scheduled_arrival_local.replace("T", " ")}</span>
+      <div className="verdict">
+        <RiskGauge result={result} />
+        <div>
+          <div className="verdict-num" style={{ color }}>
+            {(result.probability * 100).toFixed(1)}%
           </div>
-          <div className="row">
-            <span>Distance</span>
-            <span>{Math.round(result.distance_km).toLocaleString()} km</span>
+          <div className="chip" style={{ color, marginTop: 8 }}>
+            <i />{result.risk_band}
           </div>
         </div>
       </div>
 
-      <div className="bay">
-        <div className="bay-head">
-          <h2 className="label" style={{ color: "var(--amber)" }}>Contributing factors</h2>
+      <div style={{ marginTop: 13 }}>
+        {base != null && (
+          <div className="kv">
+            <span>Route average</span>
+            <span>{(base * 100).toFixed(1)}%</span>
+          </div>
+        )}
+        {delta != null && (
+          <div className="kv">
+            <span>Difference</span>
+            <span style={{ color: delta > 0 ? "var(--red)" : "var(--green)" }}>
+              {delta > 0 ? "+" : ""}{(delta * 100).toFixed(1)} pts
+            </span>
+          </div>
+        )}
+        <div className="kv">
+          <span>Arrives</span>
+          <span>{result.scheduled_arrival_local.replace("T", " ").slice(0, 16)}</span>
         </div>
-        {result.top_drivers.map((d) => {
-          const mag = Math.min(1, Math.abs(d.contribution) / 0.4);
-          const up = d.direction === "increases";
-          return (
-            <div key={d.feature} className="driver">
-              <span className="nm">{d.feature.replace(/_/g, " ")}</span>
-              <span className={up ? "up" : "dn"}>
-                {up ? "▲" : "▼"} {Math.abs(d.contribution).toFixed(3)}
-              </span>
-              <span className="driver-bar">
-                <i style={{
-                  background: up ? "var(--red)" : "var(--green)",
-                  width: `${mag * 50}%`,
-                  left: up ? "50%" : `${50 - mag * 50}%`,
-                }} />
-              </span>
-            </div>
-          );
-        })}
-        <p style={{ margin: "12px 0 0", fontSize: 10, lineHeight: 1.6, color: "var(--text-faint)" }}>
-          Log-odds contributions from the model itself, not a narrative added afterwards.
-        </p>
+        <div className="kv">
+          <span>Distance</span>
+          <span>{Math.round(result.distance_km).toLocaleString()} km</span>
+        </div>
       </div>
     </>
+  );
+}
+
+function Conditions({ result, origin, dest }: { result: Prediction; origin: string; dest: string }) {
+  return (
+    <div className="section">
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 9 }}>
+        <span className="eyebrow">Conditions</span>
+        <span className="eyebrow" style={{ letterSpacing: 0, textTransform: "none" }}>
+          {sourceLegend(result.weather.origin as Record<string, number | string | null>)}
+        </span>
+      </div>
+      <MetarStrip result={result} origin={origin} dest={dest} />
+    </div>
+  );
+}
+
+function Drivers({ result }: { result: Prediction }) {
+  return (
+    <div className="section">
+      <div className="eyebrow" style={{ marginBottom: 9 }}>What moved it</div>
+      {result.top_drivers.map((d) => {
+        const up = d.direction === "increases";
+        const mag = Math.min(1, Math.abs(d.contribution) / 0.4);
+        return (
+          <div className="driver" key={d.feature}>
+            <span className="nm">{d.feature.replace(/_/g, " ")}</span>
+            <span className="val" style={{ color: up ? "var(--red)" : "var(--green)" }}>
+              {up ? "+" : "−"}{Math.abs(d.contribution).toFixed(3)}
+            </span>
+            <span className="track">
+              <i style={{
+                background: up ? "var(--red)" : "var(--green)",
+                width: `${mag * 50}%`,
+                left: up ? "50%" : `${50 - mag * 50}%`,
+              }} />
+            </span>
+          </div>
+        );
+      })}
+      <p style={{ margin: "10px 0 0", fontSize: 11, color: "var(--fg-3)", lineHeight: 1.5 }}>
+        Log-odds contributions from the model, not a story added afterwards.
+      </p>
+    </div>
   );
 }

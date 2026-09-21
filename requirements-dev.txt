@@ -1,0 +1,8 @@
+duckdb>=1.1.0
+lightgbm>=4.5.0
+pandas>=2.2.0
+pyarrow>=17.0.0
+scikit-learn>=1.5.0
+numpy>=1.26.0
+requests>=2.32.0
+matplotlib>=3.9.0

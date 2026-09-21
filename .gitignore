@@ -1,0 +1,15 @@
+data/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.local
+web/node_modules/
+web/.next/
+web/.vercel/
+.DS_Store
+ml/artifacts/
+ml/reports/
+data/processed/duckdb_spill
+.ruff_cache/
+web/tsconfig.tsbuildinfo

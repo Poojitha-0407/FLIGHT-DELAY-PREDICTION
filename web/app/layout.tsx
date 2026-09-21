@@ -9,18 +9,17 @@ const inter = Inter({
   display: "swap",
 });
 
-// Numerics are everywhere in this UI, so the mono needs real tabular figures.
 const mono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
-  weight: ["400", "500"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Flight Delay Platform",
+  title: "Flight Delay Predictor | Route Availability & Delay Predictions",
   description:
-    "Delay risk across the 30 busiest US airports, from a year of BTS on-time performance.",
+    "Check direct flight connectivity across the 30 busiest US airports and compare pre-departure delay probabilities across operating airlines.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

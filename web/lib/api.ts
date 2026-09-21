@@ -15,6 +15,18 @@ export const getRoutes = (minFlights = 500) =>
   get<{ routes: Route[] }>(`/api/routes?min_flights=${minFlights}&limit=2000`)
     .then((d) => d.routes);
 
+export const checkRoute = async (origin: string, dest: string) => {
+  const data = await get<{ count: number; exists: boolean; routes: Route[] }>(
+    `/api/routes?origin=${origin.toUpperCase()}&dest=${dest.toUpperCase()}`
+  );
+  const route = data.routes[0] || null;
+  return {
+    exists: Boolean(data.exists && route),
+    route,
+    operatingCarriers: route?.operating_carriers ?? [],
+  };
+};
+
 export const getDashboard = () => get<DashboardSummary>("/api/dashboard");
 
 export const getCarriers = () =>

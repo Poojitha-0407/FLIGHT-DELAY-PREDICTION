@@ -22,6 +22,12 @@ export interface AirportSummary {
   peak_hourly_departures: number;
 }
 
+export interface OperatingCarrier {
+  carrier: string;
+  flights: number;
+  carrier_route_delay_rate: number;
+}
+
 export interface Route {
   origin: string;
   dest: string;
@@ -40,6 +46,7 @@ export interface Route {
   distance_km: number;
   cancelled: number;
   cancel_rate: number;
+  operating_carriers?: OperatingCarrier[];
 }
 
 export interface HourRow {

@@ -45,6 +45,14 @@ def dashboard() -> dict:
     return json.loads((ARTIFACTS / "dashboard.json").read_text())
 
 
+@lru_cache(maxsize=1)
+def route_carriers() -> dict:
+    p = ARTIFACTS / "route_carriers.json"
+    if p.exists():
+        return json.loads(p.read_text())
+    return {}
+
+
 class PredictRequest(BaseModel):
     origin: str = Field(..., min_length=3, max_length=3, examples=["JFK"])
     dest: str = Field(..., min_length=3, max_length=3, examples=["LAX"])
@@ -144,6 +152,7 @@ def routes(
     sort: Literal["flights", "delay_rate", "avg_delay_min"] = "flights",
 ) -> dict:
     rows = dashboard()["routes"]
+    rc = route_carriers()
     if origin:
         rows = [r for r in rows if r["origin"] == origin.upper()]
     if dest:
@@ -151,7 +160,16 @@ def routes(
     if min_flights:
         rows = [r for r in rows if r["flights"] >= min_flights]
     rows = sorted(rows, key=lambda r: r[sort] or 0, reverse=True)
-    return {"count": len(rows), "routes": rows[:limit]}
+    res_routes = []
+    for r in rows[:limit]:
+        item = dict(r)
+        item["operating_carriers"] = rc.get(f"{r['origin']}-{r['dest']}", [])
+        res_routes.append(item)
+    return {
+        "count": len(rows),
+        "exists": len(rows) > 0,
+        "routes": res_routes,
+    }
 
 
 @app.get("/api/dashboard")
